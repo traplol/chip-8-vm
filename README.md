@@ -2,7 +2,7 @@ chip-8-vm
 =========
 
 ## Usage
-chip-8-vm <chip8 rom file>
+`chip-8-vm <chip8 rom file>`
 
 ## Somethings to note
 I use SDL for graphics rendering and keyboard input.
