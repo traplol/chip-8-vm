@@ -1,5 +1,7 @@
 chip-8-vm
 =========
+## Dependencies
+SDL2
 
 ## Usage
 `chip-8-vm <chip8 rom file>`
