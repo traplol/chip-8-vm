@@ -7,10 +7,10 @@ SDL2
 `chip-8-vm <chip8 rom file>`
 
 ## Somethings to note
+There are some bugs with a few instructions I'll need to fix, but for a practical demonstration it works.  
 I use SDL for graphics rendering and keyboard input.
 
-
-Compile with **DEBUGGER** defined in your preprocessor to compile with the pseudo-debugger functionality.
+Compile with **DEBUGGER** defined in your preprocessor to compile with the pseudo-debugger functionality.   
 Compile with **LOGGING** defined in your preprocessor to compile with the logging functionality.
 
 To use the psuedo-debugger you use load a rom as you normally would, except instructions won't be executed
