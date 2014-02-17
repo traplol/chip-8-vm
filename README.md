@@ -1,5 +1,7 @@
 chip-8-vm
 =========
+![The emulator running a pong rom](http://i.imgur.com/lQnl7rd.png)
+
 ## Dependencies
 SDL2
 
