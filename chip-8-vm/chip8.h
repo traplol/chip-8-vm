@@ -41,13 +41,13 @@
 #define V_SIZE 16
 
 #ifdef _DEBUG
-#define TICK_RATE 3
+#define EMU_TICK_RATE 3
 #else
-#define TICK_RATE (1000.0 / 60)
+#define EMU_TICK_RATE (1000.0 / 60)
 #endif
 
 #ifdef DEBUGGER
-#define TICK_RATE -1
+#define EMU_TICK_RATE -1
 #endif
 
 #ifdef LOGGING
@@ -71,9 +71,14 @@ typedef unsigned short u16;
 class Chip8
 {
 public:
-	u8 draw_flag;
 	u8 GFX[GFX_SIZE];
 	u8 KEY_STATE[NUM_OF_KEYS];
+	u8 draw_flag;
+
+	void init();
+	bool load_rom(char* filename);
+	void run_cycle();
+private:
 	u8 MEMORY[MEM_SIZE];
 	u16 STACK[STACK_SIZE];
 
@@ -88,13 +93,12 @@ public:
 
 	u8 op, x, y, n2, n1;
 	u16 n3, instruction;
-
-	void init();
-	bool load_rom(char* filename);
-	void run_cycle();
-private:
+	
 	void decode();
 	void execute();
+#ifdef LOGGING
+	void dumpstate();
+#endif
 };
 
 #endif

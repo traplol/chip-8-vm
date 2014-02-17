@@ -53,20 +53,26 @@ int main(int argc, char *argv[])
 		{
 			while (!quit)
 			{
-#ifndef DEBUGGER
-				handle_inputs();
-				emu.run_cycle();
+				static double start = std::clock();
+				double time_passed = std::clock();
+				if ((time_passed - start) >= EMU_TICK_RATE)
+				{
+					start = std::clock();
+#ifdef DEBUGGER
+					if (handle_inputs())
+					{
+						emu.run_cycle();
+					}
 #else
-				if (handle_inputs())
-				{
+					handle_inputs();
 					emu.run_cycle();
-				}
 #endif
-				if (emu.draw_flag)
-				{
-					draw_graphics();
+					if (emu.draw_flag)
+					{
+						draw_graphics();
+						emu.draw_flag = false;
+					}
 				}
-				//emu.draw_flag = false;
 			}
 			SDL_DestroyRenderer(renderer);
 			SDL_DestroyWindow(window);

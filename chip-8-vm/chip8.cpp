@@ -43,31 +43,30 @@ u8 chip8_fontset[80] =
 };
 
 #ifdef LOGGING
-static void dumpstate(Chip8* c8)
+void Chip8::dumpstate()
 {
 
 	FILE* log_file = fopen(LOG_FILE, "a");
 	fprintf(log_file, "========REGISTERS=========\n");
-	fprintf(log_file, "PC: %04X\n", c8->PC);
-	fprintf(log_file, "SP: %04X\n", c8->SP);
-	fprintf(log_file, "I : %04X\n", c8->I);
+	fprintf(log_file, "PC: %04X\n", PC);
+	fprintf(log_file, "SP: %04X\n", SP);
+	fprintf(log_file, "I : %04X\n", I);
 	for (int i = 0; i < V_SIZE; ++i)
 	{
-		fprintf(log_file, "V%X: %02X\n", i, c8->V[i]);
+		fprintf(log_file, "V%X: %02X\n", i, V[i]);
 	}
 	fprintf(log_file, "=======INSTRUCTION========\n");
-	fprintf(log_file, "INSTRUCTION: %04X\n", c8->instruction);
-	fprintf(log_file, "     OPCODE: %X\n", c8->op);
-	fprintf(log_file, "          X: %X\n", c8->x);
-	fprintf(log_file, "          Y: %X\n", c8->y);
-	fprintf(log_file, "        NNN: %03X\n", c8->n3);
-	fprintf(log_file, "         NN: %02X\n", c8->n2);
-	fprintf(log_file, "          N: %X\n", c8->n1);
+	fprintf(log_file, "INSTRUCTION: %04X\n", instruction);
+	fprintf(log_file, "     OPCODE: %X\n", op);
+	fprintf(log_file, "          X: %X\n", x);
+	fprintf(log_file, "          Y: %X\n", y);
+	fprintf(log_file, "        NNN: %03X\n", n3);
+	fprintf(log_file, "         NN: %02X\n", n2);
+	fprintf(log_file, "          N: %X\n", n1);
 	fprintf(log_file, "===========MISC===========\n");
-	fprintf(log_file, "delay_timer: %X\n", c8->delay_timer);
-	fprintf(log_file, "sound_timer: %X\n", c8->sound_timer);
-	fprintf(log_file, "  draw_flag: %X\n", c8->draw_flag);
-	fprintf(log_file, "  key_press: %X\n", c8->key_press);
+	fprintf(log_file, "delay_timer: %X\n", delay_timer);
+	fprintf(log_file, "sound_timer: %X\n", sound_timer);
+	fprintf(log_file, "  key_press: %X\n", key_press);
 	fprintf(log_file, "==========================\n");
 	fclose(log_file);
 }
@@ -76,7 +75,8 @@ static void dumpstate(Chip8* c8)
 void Chip8::init()
 {
 #ifdef LOGGING
-	FILE* log_file = fopen(LOG_FILE, "w");
+	FILE* log_file = fopen(LOG_FILE, "wb+");
+	printf("Creating log file %s\n", LOG_FILE);
 	fclose(log_file);
 #endif
 	std::fill(MEMORY, MEMORY + MEM_SIZE, 0);
@@ -92,8 +92,6 @@ void Chip8::init()
 
 	delay_timer = 0;
 	sound_timer = 0;
-
-	draw_flag = 0;
 
 	for (int i = 0; i < 80; ++i)
 	{
@@ -146,29 +144,22 @@ bool Chip8::load_rom(char* filename)
 
 void Chip8::run_cycle()
 {
-	//printf("cycle\n");
-	static double start = std::clock();
-	double time_passed = std::clock();
-	if ((time_passed - start) >= TICK_RATE)
-	{
-		start = std::clock();
-		decode();
+	decode();
 #ifdef LOGGING
-		dumpstate(this);
+	dumpstate();
 #endif
-		execute();
-		if (delay_timer > 0)
-		{
-			delay_timer--;
-		}
+	execute();
+	if (delay_timer > 0)
+	{
+		delay_timer--;
+	}
+	if (sound_timer > 0)
+	{
 		if (sound_timer > 0)
 		{
-			if (sound_timer == 1)
-			{
-				printf("beep!\n");
-			}
-			sound_timer--;
+			printf("beep!\n");
 		}
+		sound_timer--;
 	}
 }
 
@@ -190,6 +181,16 @@ void Chip8::execute()
 #ifdef DEBUGGER
 	printf("Instruction: %X\n", instruction);
 	printf("PC :%04X\n", PC);
+	printf("Registers:\n");
+	for (int i = 0; i < V_SIZE; ++i)
+	{
+		if (i > 0 && i % 4 == 0)
+		{
+			printf("\n");
+		}
+		printf("v%X:%2X  ", i, V[i]);
+	}
+	printf("\n-----------------------------\n");
 #endif
 	switch (op)
 	{
@@ -200,11 +201,8 @@ void Chip8::execute()
 #ifdef DEBUGGER
 			printf("cls\n");
 #endif
-			for (int i = 0; i < GFX_SIZE; ++i)
-			{
-				GFX[i] = 0;
-			}
-			draw_flag = 1;
+			std::fill(GFX, GFX + GFX_SIZE, 0);
+			draw_flag = true;
 		}
 		else if (n2 == 0xEE)
 		{
@@ -212,7 +210,7 @@ void Chip8::execute()
 #ifdef DEBUGGER
 			printf("rts\n");
 #endif
-			PC = STACK[--SP];
+			PC = STACK[SP--];
 		}
 		else
 		{
@@ -234,7 +232,7 @@ void Chip8::execute()
 #ifdef DEBUGGER
 		printf("jsr %X\n", n3);
 #endif
-		STACK[SP++] = PC;
+		STACK[++SP] = PC;
 		PC = n3;
 		break;
 		// Skips the next instruction if V[x] == n2.
@@ -280,7 +278,7 @@ void Chip8::execute()
 		printf("add v%X, %X\n", x, n2);
 		printf("eval: %X\n", V[x] + n2);
 #endif
-		V[x] += n2;
+		V[x] = V[x] + n2;
 		break;
 	case 0x8:
 		switch (n1)
@@ -336,8 +334,8 @@ void Chip8::execute()
 			printf("sub v%X, v%X\n", x, y);
 			printf("eval: %X\n", V[x] - V[y]);
 #endif
+			V[0xF] = (V[x] > V[y]) ? 1 : 0;
 			V[x] = V[x] - V[y];
-			V[0xF] = (V[y] >= V[x]) ? 0 : 1;
 #ifdef DEBUGGER
 			printf("eval: vF: %X\n", V[0xF]);
 #endif
@@ -351,7 +349,7 @@ void Chip8::execute()
 			printf("eval: vF: %X\n", LSB(V[x]));
 #endif
 			V[0xF] = LSB(V[x]);
-			V[x] = V[x] >> 1;
+			V[x] = V[x] / 2;
 			break;
 			// Sets V[x] to V[y] minus V[x]. V[0xF] is set to 0 when there's
 			// a borrow, and 1 when there isn't.
@@ -360,7 +358,7 @@ void Chip8::execute()
 			printf("rsb v%X, v%X\n", x, y);
 			printf("eval: %X\n", V[y] - V[x]);
 #endif
-			V[0xF] = (V[y] - V[x] < 0) ? 1 : 0;
+			V[0xF] = (V[y] > V[x]) ? 1 : 0;
 			V[x] = V[y] - V[x];
 #ifdef DEBUGGER
 			printf("eval: vF: %X\n", V[0xF]);
@@ -375,7 +373,7 @@ void Chip8::execute()
 			printf("eval: vF: %X\n", MSB8(V[x]));
 #endif
 			V[0xF] = MSB8(V[x]);
-			V[x] = V[x] << 1;
+			V[x] = V[x] * 2;
 			break;
 		}
 		break;
@@ -425,26 +423,26 @@ void Chip8::execute()
 		printf("sprite v%X, v%X, %X\n", x, y, n1);
 #endif
 	{
-			u16 x_ = V[x];
-			u16 y_ = V[y];
-			u16 height_ = n1;
-			u16 pixel_ = 0;
-			for (int vert = 0; vert < height_; ++vert)
+		u16 x_ = V[x];
+		u16 y_ = V[y];
+		u16 height_ = n1;
+		u16 pixel_ = 0;
+		draw_flag = 1;
+		for (int vert = 0; vert < height_; ++vert)
+		{
+			pixel_ = MEMORY[I + vert];
+			for (int hori = 0; hori < 8; ++hori)
 			{
-				pixel_ = MEMORY[I + vert];
-				for (int hori = 0; hori < 8; ++hori)
+				if ((pixel_ & (0x80 >> hori)) != 0)
 				{
-					if ((pixel_ & (0x80 >> hori)) != 0)
+					if (GFX[x_ + hori + ((y_ + vert) * 64)] == 1)
 					{
-						if (GFX[x_ + hori + ((y_ + vert) * 64)] == 1)
-						{
-							V[0xF] = 1;
-						}
-						GFX[x_ + hori + ((y_ + vert) * 64)] ^= 1;
+						V[0xF] = 1;
 					}
+					GFX[x_ + hori + ((y_ + vert) * 64)] ^= 1;
 				}
 			}
-			draw_flag = 1;
+		}
 	}
 		break;
 	case 0xE:
@@ -494,6 +492,10 @@ void Chip8::execute()
 					break;
 				}
 			}
+			if (!key_press)
+			{
+				PC -= 2;
+			}
 			break;
 			// Sets delay_timer to V[x].
 		case 0x15:
@@ -541,14 +543,14 @@ void Chip8::execute()
 #endif
 			MEMORY[I] = V[x] / 100;
 			MEMORY[I + 1] = (V[x] / 10) % 10;
-			MEMORY[I + 2] = (V[x] % 100) % 10;
+			MEMORY[I + 2] = V[x] % 10;
 			break;
 			// Stores V[0] to V[x] in memory starting at address I.
 		case 0x55:
 #ifdef DEBUGGER
 			printf("str v0-v%X\n", x);
 #endif
-			for (int i = 0; i < x; ++i)
+			for (int i = 0; i <= x; ++i)
 			{
 				MEMORY[I + i] = V[i];
 			}
@@ -559,7 +561,7 @@ void Chip8::execute()
 #ifdef DEBUGGER
 			printf("ldr v0-v%X\n", x);
 #endif
-			for (int i = 0; i < x; ++i)
+			for (int i = 0; i <= x; ++i)
 			{
 				V[i] = MEMORY[I + i];
 			}
@@ -569,6 +571,6 @@ void Chip8::execute()
 		break;
 	}
 #ifdef DEBUGGER
-	printf("-------------------\n");
+	printf("-----------------------------\n");
 #endif
 }
